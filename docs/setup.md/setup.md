@@ -18,10 +18,10 @@ uv venv
 source .venv/bin/activate
 
 # Install dependencies
-# server
-uv add "mcp[cli]" httpx
-# client
-uv add anthropic python-dotenv
+uv add \
+    "mcp[cli]" httpx \ # server
+    anthropic python-dotenv \
+    ruff # dev tool
 
 # Create our server and client files
 touch server.py client.py

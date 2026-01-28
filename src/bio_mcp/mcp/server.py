@@ -3,10 +3,6 @@ from pathlib import Path
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-# Paths to CVMFS repositories
-CVMFS_SINGULARITY_DATA = Path("/cvmfs/data.galaxyproject.org")
-CVMFS_SINGULARITY_GALAXY = Path("/cvmfs/singularity.galaxyproject.org/all")
-
 # Initialize FastMCP server
 mcp = FastMCP("bio-mcp")
 
