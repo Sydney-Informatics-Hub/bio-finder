@@ -1,17 +1,16 @@
 import asyncio
-from typing import Optional, List
+import json
+import re
 from contextlib import AsyncExitStack
-
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from typing import List, Optional
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
-import re
-import json
-
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 load_dotenv()  # load environment variables from .env
+
 
 def extract_entry_names(query: str) -> List[str]:
     """
@@ -19,6 +18,7 @@ def extract_entry_names(query: str) -> List[str]:
     """
     tokens = re.findall(r"[a-zA-Z0-9_+-]+", query.lower())
     return list(dict.fromkeys(tokens))  # preserve order, remove dups
+
 
 class MCPClient:
     def __init__(self):
@@ -33,21 +33,23 @@ class MCPClient:
         Args:
             server_script_path: Path to the server script (.py or .js)
         """
-        is_python = server_script_path.endswith('.py')
-        is_js = server_script_path.endswith('.js')
+        is_python = server_script_path.endswith(".py")
+        is_js = server_script_path.endswith(".js")
         if not (is_python or is_js):
             raise ValueError("Server script must be a .py or .js file")
 
         command = "python" if is_python else "node"
         server_params = StdioServerParameters(
-            command=command,
-            args=[server_script_path],
-            env=None
+            command=command, args=[server_script_path], env=None
         )
 
-        stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
+        stdio_transport = await self.exit_stack.enter_async_context(
+            stdio_client(server_params)
+        )
         self.stdio, self.write = stdio_transport
-        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
+        self.session = await self.exit_stack.enter_async_context(
+            ClientSession(self.stdio, self.write)
+        )
 
         await self.session.initialize()
 
@@ -55,7 +57,7 @@ class MCPClient:
 
     async def process_query(self, query: str) -> str:
         """
-        No LLM use 
+        No LLM use
         """
         # Get possible entry names from user input
         entry_names = extract_entry_names(query)
@@ -66,7 +68,7 @@ class MCPClient:
         result = await self.session.call_tool("get_entry_cache", {})
 
         # MCP returns TextCoontent objects, not raw strings
-        known_entries = { item.text for item in result.content if item.type == "text" }
+        known_entries = {item.text for item in result.content if item.type == "text"}
         matched = sorted(set(entry_names) & known_entries)
 
         if not matched:
@@ -83,7 +85,7 @@ class MCPClient:
             try:
                 query = input("\nQuery: ").strip()
 
-                if query.lower() == 'quit':
+                if query.lower() == "quit":
                     break
 
                 response = await self.process_query(query)
@@ -95,6 +97,7 @@ class MCPClient:
     async def cleanup(self):
         """Clean up resources"""
         await self.exit_stack.aclose()
+
 
 async def main():
     if len(sys.argv) < 2:
@@ -108,6 +111,8 @@ async def main():
     finally:
         await client.cleanup()
 
+
 if __name__ == "__main__":
     import sys
+
     asyncio.run(main())

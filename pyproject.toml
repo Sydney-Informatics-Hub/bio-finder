@@ -14,3 +14,19 @@ dependencies = [
 
 [project.scripts]
 build-cache = "bio_mcp.cache.build_cache:build_cache"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort (imports)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

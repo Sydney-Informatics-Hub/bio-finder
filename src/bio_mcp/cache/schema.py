@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import TypedDict, Optional, List
-from datetime import datetime
+
+from typing import List, Optional, TypedDict
 
 # Schema for cache entries, for consistency
+
 
 class CacheEntry(TypedDict):
     entry_name: str

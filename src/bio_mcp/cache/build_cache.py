@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
-from bio_mcp.cvmfs.scan_repo import scan_executable_entries
 from bio_mcp.cache.schema import CacheDocument
+from bio_mcp.cvmfs.scan_repo import scan_executable_entries
+from bio_mcp.globals import CVMFS_SINGULARITY_GALAXY
 
-from bio_mcp.globals import CVMFS_SINGULARITY_GALAXY, CVMFS_SINGULARITY_DATA
 
 def build_cache(
     cvmfs_path: Path,
