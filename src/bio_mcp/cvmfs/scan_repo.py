@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 from typing import Iterable
 
-from .models import CvmfsEntry
+from bio_mcp.cvmfs.models import CvmfsEntry
 
 def scan_executable_entries(cvmfs_path: Path) -> list[CvmfsEntry]:
     """
