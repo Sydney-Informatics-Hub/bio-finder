@@ -4,28 +4,22 @@ import re
 from contextlib import AsyncExitStack
 from typing import List, Optional
 
-from anthropic import Anthropic
-from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-
-load_dotenv()  # load environment variables from .env
 
 
 def extract_entry_names(query: str) -> List[str]:
     """
-    Get lowercase tokens that could be e.g. containers or reference data names?
+    Get lowercase tokens that could be e.g. containers or reference data names.
     """
     tokens = re.findall(r"[a-zA-Z0-9_+-]+", query.lower())
-    return list(dict.fromkeys(tokens))  # preserve order, remove dups
-
+    return list(dict.fromkeys(tokens))
 
 class MCPClient:
     def __init__(self):
         # Initialize session and client objects
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
-        self.anthropic = Anthropic()
 
     async def connect_to_server(self, server_script_path: str):
         """Connect to an MCP server
@@ -64,17 +58,24 @@ class MCPClient:
         if not entry_names:
             return "No matching tools or data in query"
 
-        # Get all known entries from cache via the server
-        result = await self.session.call_tool("get_entry_cache", {})
+        result = await self.session.call_tool(
+            "search_entry_name", {"entry_names": entry_names}
+        )
 
-        # MCP returns TextCoontent objects, not raw strings
-        known_entries = {item.text for item in result.content if item.type == "text"}
-        matched = sorted(set(entry_names) & known_entries)
+        payload = None
+        for item in result.content:
+            if item.type == "text":
+                payload = item.text
+                break
 
-        if not matched:
+        if not payload:
+            return "No response from search_entry_name."
+
+        data = json.loads(payload)
+        if not data.get("found"):
             return "No matching entries found in cache."
 
-        return json.dumps(matched, indent=2)
+        return json.dumps(data, indent=2)
 
     async def chat_loop(self):
         """Run an interactive chat loop"""
