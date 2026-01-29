@@ -9,8 +9,12 @@ from bio_mcp.globals import CACHE_PATH
 # Initialize FastMCP server
 mcp = FastMCP("bio-mcp")
 
+def _load_cache() -> Dict[str, object]:
+    return load_cache(CACHE_PATH)
+
+
 def _load_tool_names() -> List[str]:
-    cache = load_cache(CACHE_PATH)
+    cache = _load_cache()
     return cache["tool_names"]
 
 @mcp.tool()
@@ -19,10 +23,18 @@ def search_entry_name(entry_names: List[str]) -> Dict[str, object]:
     Fuzzy match a list of entry names against the cached tool names
     """
     if not entry_names:
-        return {"found": [], "missing": [], "count": 0, "suggestions": {}}
+        return {
+            "found": [],
+            "missing": [],
+            "count": 0,
+            "suggestions": {},
+            "entries": [],
+        }
 
-    known_list = _load_tool_names()
+    cache = _load_cache()
+    known_list = cache["tool_names"]
     known_lower = {name.lower() for name in known_list}
+    entries = cache.get("entries", [])
     found = []
     missing = []
     suggestions: Dict[str, List[str]] = {}
@@ -41,11 +53,17 @@ def search_entry_name(entry_names: List[str]) -> Dict[str, object]:
             if matches:
                 suggestions[name] = matches
 
+    found_lower = {name.lower() for name in found}
+    matched_entries = [
+        entry for entry in entries if entry.get("tool_name", "").lower() in found_lower
+    ]
+
     return {
         "found": found,
         "missing": missing,
         "count": len(entry_names),
         "suggestions": suggestions,
+        "entries": matched_entries,
     }
 
 
