@@ -9,16 +9,7 @@ from bio_mcp.globals import CACHE_PATH
 # Initialize FastMCP server
 mcp = FastMCP("bio-mcp")
 
-def _load_cache() -> Dict[str, object]:
-    return load_cache(CACHE_PATH)
-
-
-def _load_tool_names() -> List[str]:
-    cache = _load_cache()
-    return cache["tool_names"]
-
-@mcp.tool()
-def search_entry_name(entry_names: List[str]) -> Dict[str, object]:
+def _search_entry_name(cache_path: Path) -> Dict[str, object]:
     """
     Fuzzy match a list of entry names against the cached tool names
     """
@@ -31,7 +22,8 @@ def search_entry_name(entry_names: List[str]) -> Dict[str, object]:
             "entries": [],
         }
 
-    cache = _load_cache()
+    # Load cache and get tool names
+    cache = load_cache(cache_path)
     known_list = cache["tool_names"]
     known_lower = {name.lower() for name in known_list}
     entries = cache.get("entries", [])
@@ -43,6 +35,7 @@ def search_entry_name(entry_names: List[str]) -> Dict[str, object]:
         if name_lower in known_lower:
             found.append(name)
         else:
+            # Fuzzy match to provide suggestions, e.g. typos, close matches
             missing.append(name)
             matches = difflib.get_close_matches(
                 name_lower,
@@ -66,6 +59,12 @@ def search_entry_name(entry_names: List[str]) -> Dict[str, object]:
         "entries": matched_entries,
     }
 
+@mcp.tool()
+def list_containers(cache_file: CacheDocument) -> str:
+    """
+    List results from match
+    """
+    return _search_entry_name(entry_names = cache_file)
 
 if __name__ == "__main__":
     # Initialise and run the server

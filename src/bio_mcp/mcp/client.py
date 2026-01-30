@@ -69,6 +69,7 @@ class MCPClient:
             "search_entry_name", {"entry_names": entry_names}
         )
 
+        # TODO: triage entry names with fuzzy matching vs. tool recommendations
         payload = None
         for item in result.content:
             if item.type == "text":
@@ -129,6 +130,7 @@ class MCPClient:
         """Run an interactive chat loop"""
         print("\nMCP Client Started!")
         print("Type your queries or 'quit' to exit.")
+        # TODO: Provide example queries, usage etc.
 
         while True:
             try:
@@ -162,6 +164,6 @@ async def main():
 
 
 if __name__ == "__main__":
-    import sys
+import sys
 
     asyncio.run(main())
