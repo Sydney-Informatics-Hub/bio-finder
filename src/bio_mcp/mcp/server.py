@@ -4,14 +4,20 @@ from typing import List, Dict
 
 from mcp.server.fastmcp import FastMCP
 
-from bio_mcp.cache.load import load_cache
-from bio_mcp.globals import CACHE_PATH
+from bio_mcp.cache.load import load_galaxy_singularity, load_biotools
 from pathlib import Path
+
+# Read in container and metadata snapshots when server starts
+JSON_PATH = Path("/home/ubuntu/bio-mcp/data/scrnaseq_galaxy_cvmfs.json")
+YAML_PATH = Path("/home/ubuntu/bio-mcp/data/scrnaseq_biotools.yaml")
+
+cvmfs_galaxy_simg = load_galaxy_singularity(JSON_PATH)
+biotools = load_biotools(YAML_PATH)
 
 # Initialize FastMCP server
 mcp = FastMCP("bio-mcp")
 
-def fuzzy_search_entries(entry_names: List[str], cache_path: Path = CACHE_PATH) -> Dict[str, object]:
+def fuzzy_search_entries(entry_names: List[str], cache: Dict[Any]) -> Dict[str, object]:
     """
     Fuzzy match a list of entry names against the cached tool names
     """

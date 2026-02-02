@@ -18,3 +18,4 @@ Data for testing and development.
     - cellranger entry available, none in biotools, not in galaxy = useful negative control
     - seurat and scanpy packages have a lot of different entries named differently
     - fastqc, multiqc, cellbender stable positive controls with different versions
+
