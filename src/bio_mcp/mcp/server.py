@@ -1,6 +1,5 @@
 import difflib
-import json
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from mcp.server.fastmcp import FastMCP
 
@@ -51,12 +50,13 @@ def search_containers(
     return [None]
 
 @mcp.tool()
-def search_entry_name(entry_names: List[str]) -> str:
+def search_containers_tool(tool_name: str) -> List[Any]:
     """
-    List results from match
+    Search available containers on the CVMFS by name.
+
+    Returns all container registroy entries, such as versions, tags and the path on the CVMFS
     """
-    matched_results = fuzzy_search_entries(entry_names)
-    return json.dumps(matched_results)
+    return search_containers(tool_name = tool_name, registry=cvmfs_galaxy_simg)
 
 if __name__ == "__main__":
     # Initialise and run the server
