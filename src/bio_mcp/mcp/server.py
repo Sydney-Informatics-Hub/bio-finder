@@ -1,10 +1,10 @@
 import difflib
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any, List
 
 from mcp.server.fastmcp import FastMCP
 
-from bio_mcp.cache.load import load_galaxy_singularity, load_biotools
-from pathlib import Path
+from bio_mcp.cache.load import load_biotools, load_galaxy_singularity
 
 # Read in container and metadata snapshots when server starts
 JSON_PATH = Path("/home/ubuntu/bio-mcp/data/scrnaseq_galaxy_cvmfs.json")
@@ -16,6 +16,7 @@ biotools = load_biotools(YAML_PATH)
 # Initialize FastMCP server
 mcp = FastMCP("bio-mcp")
 
+
 def search_containers(
     tool_name: str,
     registry: dict,
@@ -24,7 +25,7 @@ def search_containers(
 ) -> list[object] | dict | None:
     """
     Search for containers available in the CVMFS registry by name.
-    
+
     Args:
         registry: CVMFS container registry, keyed by lowercased container name
         tool_name: Tool name to search in registry
@@ -34,13 +35,14 @@ def search_containers(
     Returns:
         List of full registry entries (one per matched container name)
     """
-    # Exact match first 
+    # Exact match first
     available_names = list(registry.keys())
     if tool_name in available_names:
         return registry.get(tool_name)
-    
+
     # Fuzzy match if no exact matches are found
-    matches = difflib.get_close_matches(tool_name, available_names, n=max_matches, cutoff=cutoff
+    matches = difflib.get_close_matches(
+        tool_name, available_names, n=max_matches, cutoff=cutoff
     )
 
     if matches:
@@ -49,6 +51,7 @@ def search_containers(
     # Return empty list of nothing found
     return [None]
 
+
 @mcp.tool()
 def search_containers_tool(tool_name: str) -> List[Any]:
     """
@@ -56,7 +59,8 @@ def search_containers_tool(tool_name: str) -> List[Any]:
 
     Returns all container registroy entries, such as versions, tags and the path on the CVMFS
     """
-    return search_containers(tool_name = tool_name, registry=cvmfs_galaxy_simg)
+    return search_containers(tool_name=tool_name, registry=cvmfs_galaxy_simg)
+
 
 if __name__ == "__main__":
     # Initialise and run the server

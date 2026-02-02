@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 import yaml
 
+
 def load_galaxy_singularity(path: Path) -> dict:
     """
     Load a json with galaxy singularity container entries from the CVMFS
@@ -16,7 +17,7 @@ def load_galaxy_singularity(path: Path) -> dict:
     Each entry has fields entry_name, tool_name, tag, path, size_bytes, mtime.
 
     This is used as a ground truth of what exists in the CVMFS repository at the time of caching.
-   
+
     Rebuild the cache/snapshot periodically or as required to fetcht the latest updates.
     """
     if not path.exists():
@@ -52,15 +53,16 @@ def load_galaxy_singularity(path: Path) -> dict:
 
     return data
 
+
 def load_biotools(path: Path) -> dict:
     """
     Load a yaml that contains metadata from https://github.com/AustralianBioCommons/finder-service-metadata/tree/main/data
-    
+
     This will be used as the ground truth for tool/container metadata.
     """
     if not path.exists():
         raise FileNotFoundError(f"Cache file not found: {path}")
-    
+
     with path.open("r", encoding="utf-8") as f:
         data: Any = yaml.safe_load(f)
 
