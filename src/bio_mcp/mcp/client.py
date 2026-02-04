@@ -8,6 +8,7 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from bio_mcp.globals import ANTHROPIC_MODEL
 
 load_dotenv()
 
@@ -26,7 +27,7 @@ class MCPClient:
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
         self.anthropic = Anthropic()
-        self.anthropic_model = "claude-haiku-4-5-20251001"
+        self.anthropic_model = ANTHROPIC_MODEL
 
     async def connect_to_server(self, server_script_path: str):
         """Connect to an MCP server
