@@ -10,7 +10,8 @@ from collections import defaultdict
 import logging
 import textwrap
 from bio_mcp.globals import ANTHROPIC_MODEL
-from bio_mcp.mcp.prompts import MASTER_PROMPT
+from bio_mcp.mcp.prompts import MASTER_PROMPT, TOOL_SELECT_PROMPT, ToolSelectionResult
+import json
 
 load_dotenv()
 
@@ -110,6 +111,63 @@ class MCPClient:
         tools = response.tools
         render_startup_message(tools)
 
+    async def skill_tool_select(self, user_query: str, tools) -> ToolSelectionResult:
+        """
+        Decide whether an MCP tool should be used.
+        This skill performs no side effects.
+        """
+        tool_summaries = [
+            {
+                "name": t.name,
+                "description": t.description,
+            }
+            for t in tools
+        ]
+
+        messages = [
+            {
+                "role": "user",
+                "content": (
+                    f"User question:\n{user_query}\n\n"
+                    f"Available tools:\n"
+                    f"{json.dumps(tool_summaries, indent=2)}\n\n"
+                    f"{TOOL_SELECT_PROMPT}"
+                ),
+            }
+        ]
+
+        response = self.anthropic.messages.create(
+            model=self.anthropic_model,
+            system=MASTER_PROMPT,
+            max_tokens=400,
+            messages=messages,
+        )
+
+        text = response.content[0].text.strip()
+
+        # Strip markdown code fences if present
+        if text.startswith("```"):
+            text = text.strip("`")
+            if text.startswith("json"):
+                text = text[4:].strip()
+
+        try:
+            result: ToolSelectionResult = json.loads(text)
+        except json.JSONDecodeError:
+            raise RuntimeError(
+                f"Tool selection skill returned invalid JSON:\n{text}"
+            )
+
+        # No hallucinating if a tool isn't selected
+        if result["decision"] == "use_tool":
+            if not result.get("tool_name"):
+                raise RuntimeError("Skill error: tool_name missing")
+        else:
+            result["tool_name"] = None
+
+        return result
+
+            
     async def process_query(self, query: str) -> str:
         """
         Process a query using Claude and registered MCP tools.
@@ -131,21 +189,45 @@ class MCPClient:
         # prompt engineer the LLM tone and persona
         messages = [ {"role": "user", "content": query} ]
 
-        response = await self.session.list_tools()
+        # Get registerd MCP tools
+        tools_response = await self.session.list_tools()
+        tools = tools_response.tools
+
         available_tools = [
             {
                 "name": tool.name,
                 "description": tool.description,
                 "input_schema": tool.inputSchema,
             }
-            for tool in response.tools
+            for tool in tools
         ]
+
+        # Skill: decide on a tool to use, no computation yet
+        decision = await self.skill_tool_select(query, tools)
+
+        # If a tool doesn't apply, do not use LLM to provide an answer
+        if decision["decision"] == "no_tool":
+            return (
+                "I couldn't find a suitable tool for this question.\n\n"
+                f"Reason {decision['reason']}"
+            )
+        
+        # Tool selected
+        tool_name = decision["tool_name"]
+        reason = decision["reason"]
+
+        tool = next(t for t in tools if t.name == tool_name)
+
+        intro = (
+            f"I’m going to use the **{tool_name}** tool.\n\n"
+            f"Why this tool: {reason}\n"
+        )
 
         # Initial Claude API call
         response = self.anthropic.messages.create(
             model=self.anthropic_model,
             max_tokens=1000,
-            system = MASTER_PROMPT,
+            system = MASTER_PROMPT, # Set tone and persona of LLM
             messages=messages,
             tools=available_tools,
         )
@@ -154,24 +236,38 @@ class MCPClient:
 
         # Process response and handle tool calls
         final_text = []
-
         assistant_message_content = []
+
+        # Process response
         for content in response.content:
             if content.type == "text":
                 final_text.append(content.text)
                 assistant_message_content.append(content)
+
             elif content.type == "tool_use":
+                # Add intro BEFORE tool_use in same assistant turn
+                assistant_message_content.insert(
+                    0,
+                    {
+                        "type": "text",
+                        "text": intro,
+                    }
+                )
                 tool_name = content.name
                 tool_args = content.input
 
-                # Execute tool call
-                result = await self.session.call_tool(tool_name, tool_args)
-                final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
-
                 assistant_message_content.append(content)
+
+                # Add assistant message (intro selection and use)
                 messages.append(
                     {"role": "assistant", "content": assistant_message_content}
                 )
+
+                # Execute tool call
+                result = await self.session.call_tool(content.name, content.input)
+                final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
+
+                # Return tool results to Claude
                 messages.append(
                     {
                         "role": "user",
@@ -185,20 +281,23 @@ class MCPClient:
                     }
                 )
 
-                # TODO: If the tool_names used is search_containers, run render_search_contaienrs?
-
                 # Get next response from Claude
                 response = self.anthropic.messages.create(
                     model=self.anthropic_model,
                     max_tokens=1000,
+                    system=MASTER_PROMPT,
                     messages=messages,
                     tools=available_tools,
                 )
 
                 logging.info(f"Next response from Claude:\n{response}\n")
 
-                final_text.append(response.content[0].text)
+                # Collect explanation text
+                for block in response.content:
+                    if block.type == "text":
+                        final_text.append(block.text)
 
+                break  # single-tool invariant enforced by skill
 
         return "\n".join(final_text)
 

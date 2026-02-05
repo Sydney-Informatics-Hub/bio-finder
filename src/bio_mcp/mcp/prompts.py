@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from typing import Literal, TypedDict, Optional
 
 MASTER_PROMPT = """\
 You are {assistant_name}, a friendly and patient assistant for biologists who are
@@ -41,3 +41,37 @@ Communication style:
 - Avoid jargon where possible; explain it when unavoidable
 - Prefer short paragraphs, bullet points, and concrete examples
 """
+
+TOOL_SELECT_PROMPT = """\
+You are performing the TOOL SELECTION skill.
+
+Goal:
+Decide whether a single MCP tool should be used to help answer the user's question.
+
+Rules:
+- Select exactly ONE tool, or NONE.
+- Do NOT call tools.
+- Do NOT ask follow-up questions.
+- Do NOT explain how to run the tool.
+- Base your decision only on the user's question and the tool descriptions.
+- Write explanations for a beginner biologist audience.
+
+Respond ONLY with valid JSON in one of the following formats.
+
+If a tool should be used:
+{
+  "decision": "use_tool",
+  "tool_name": "<tool name>",
+  "reason": "<short, plain-language explanation>"
+}
+
+If no tool applies:
+{
+  "decision": "no_tool",
+  "reason": "<short explanation of why no tool fits>"
+}
+"""
+class ToolSelectionResult(TypedDict):
+    decision: Literal["use_tool", "no_tool"]
+    tool_name: Optional[str]
+    reason: str
