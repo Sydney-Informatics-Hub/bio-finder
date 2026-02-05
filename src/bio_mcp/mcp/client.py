@@ -10,9 +10,11 @@ from collections import defaultdict
 import logging
 import textwrap
 from bio_mcp.globals import ANTHROPIC_MODEL
+from bio_mcp.mcp.prompts import MASTER_PROMPT
 
 load_dotenv()
 
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -79,6 +81,10 @@ class MCPClient:
     async def connect_to_server(self, server_script_path: str):
         """Connect to an MCP server
 
+        - Validates server
+        - Sets up proper communication channels
+        - Initialises the session and lists registered MCP tools
+        
         Args:
             server_script_path: Path to the server script (.py)
         """
@@ -105,8 +111,25 @@ class MCPClient:
         render_startup_message(tools)
 
     async def process_query(self, query: str) -> str:
-        """Process a query using Claude and available tools"""
-        messages = [{"role": "user", "content": query}]
+        """
+        Process a query using Claude and registered MCP tools.
+
+        - Maintains conversation context
+        - Handles Claude’s responses and tool calls
+        - Manages the message flow between Claude and tools
+        
+        Tool handling:
+            - Modify to handle specific tool types
+            - Custom error handling for tool calls
+
+        Response processing:
+            - Combines results into a coherent response
+            - Customise how tool results are formatted
+            - Add response filtering or transformation
+            - Implement custom logging
+        """
+        # prompt engineer the LLM tone and persona
+        messages = [ {"role": "user", "content": query} ]
 
         response = await self.session.list_tools()
         available_tools = [
@@ -178,6 +201,9 @@ class MCPClient:
 
         return "\n".join(final_text)
 
+        - Provides a simple command-line interface
+        - Handles user input and displays responses
+        - Allows graceful exit
 
     async def chat_loop(self):
         """Run an interactive chat loop"""
@@ -192,7 +218,6 @@ class MCPClient:
                 if query.lower() == "quit":
                     break
 
-                # response = await self.process_query(query)
                 response = await self.process_query(query)
 
                 print("\n" + response)
