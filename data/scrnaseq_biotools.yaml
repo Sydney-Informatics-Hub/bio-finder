@@ -397,3 +397,60 @@
   resources:
   - title: .nan
     url: .nan
+- biocontainers: null
+  biotools: null
+  bunya:
+  - 0.0.1
+  description: "THIS IS A NEGATIVE CONTROL.\n\n
+    Not a bioinformatics tool. Not a scientific tool. Not intended to process
+    biological data.\n\n
+    This entry exists solely to test metadata ingestion, indexing, and filtering
+    logic. Any apparent structure or familiarity is coincidental and should not
+    be interpreted as domain relevance.\n\n
+    The software performs no analysis, accepts no meaningful inputs, and produces
+    no scientifically valid outputs."
+  edam-inputs:
+  - formats:
+    - NONE
+    term: No input
+  edam-operations:
+  - None
+  edam-outputs:
+  - formats:
+    - NONE
+    term: No output
+  edam-topics:
+  - Not applicable
+  galaxy: null
+  homepage: https://example.com/negative-control
+  id: negative-control
+  license: CC0-1.0
+  name: negative-control
+  nci-gadi: null
+  nci-if89: null
+  pawsey: null
+  publications: null
+  resources:
+  - title: Metadata test only
+    url: https://example.com/negative-control
+- biocontainers: null
+  biotools: null
+  bunya:
+  - 0.1.0
+  description: null
+  edam-inputs: null
+  edam-operations: null
+  edam-outputs: null
+  edam-topics: null
+  galaxy: null
+  homepage: https://github.com/example-org/bamzap
+  id: bamzap
+  license: null
+  name: bamzap
+  nci-gadi: null
+  nci-if89: null
+  pawsey: null
+  publications: null
+  resources:
+  - title: .nan
+    url: .nan

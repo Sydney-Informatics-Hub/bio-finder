@@ -7,6 +7,23 @@ from bio_mcp.globals import ANTHROPIC_MODEL
 
 load_dotenv()
 
+def alias_metadata(yaml):
+    """
+    Read in a biotools yaml, subset the fields that are informative to user queries
+    """
+    collected_data = []
+    for tool_id, tool_data in yaml.items():
+        entry = {
+            "id": tool_id,
+            "description": tool_data.get("description", ""),
+            "edam_inputs": tool_data.get("edam-inputs", []),
+            "edam_outputs": tool_data.get("edam-outputs", []),
+            "edam_operations": tool_data.get("edam-operations", []),
+            "edam_topics": tool_data.get("edam-topics", []),
+        }
+    collected_data.append(entry)
+    return collected_data
+
 def make_embedding_text(tool: dict) -> str:
     """
     Construct a stable, information-dense text block for embedding.
@@ -28,18 +45,3 @@ def make_embedding_text(tool: dict) -> str:
         parts.append("EDAM operations: " + ", ".join(operations))
 
     return "\n".join(parts)
-
-
-def build_embeddings(yaml: Dict[str, Dict]) -> Dict[str, list[float]]:
-    client = Anthropic()
-
-    embeddings: Dict[str, list[float]] = {}
-
-    for tool_name in yaml.keys():
-        # Build embedding for each entry in metadata
-        entry = yaml.get(tool_name)
-        text = make_embedding_text(entry)
-        response = client.embedding.create(model=ANTHROPIC_MODEL, input=text)
-        embeddings[tool_name] = response["embedding"]
-
-    return embeddings
