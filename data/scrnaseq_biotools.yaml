@@ -454,3 +454,52 @@
   resources:
   - title: .nan
     url: .nan
+- biocontainers: geneforge
+  biotools: GeneForge
+  bunya:
+  - 1.4.2
+  description: "GeneForge is a modular toolkit for rapid construction and evaluation of
+    gene expression matrices from bulk and single-cell RNA-seq data.\n\nThe tool
+    focuses on reproducible preprocessing, lightweight normalisation strategies,
+    and transparent QC summaries suitable for both exploratory analysis and
+    downstream statistical modelling.\n\nGeneForge is designed to integrate easily
+    into Nextflow and Snakemake pipelines and produces tidy, analysis-ready outputs.\n\n
+    A. Smith, L. Nguyen, and P. Rao. GeneForge: pragmatic gene expression preprocessing
+    for scalable RNA-seq analysis. Journal of Computational Biology (in review)."
+  edam-inputs:
+  - formats:
+    - FASTQ
+    - BAM
+    term: FASTQ
+  edam-operations:
+  - Sequencing quality control
+  - Normalisation
+  - Expression analysis
+  edam-outputs:
+  - formats:
+    - TSV
+    - HDF5
+    term: Gene expression matrix
+  edam-topics:
+  - Gene expression
+  - RNA-Seq
+  - Transcriptomics
+  galaxy:
+  - description: 'GeneForge: Expression matrix construction'
+    title: GeneForge 1.4.2+galaxy0
+    url: https://usegalaxy.example.org/root?tool_id=geneforge
+  homepage: https://github.com/example-org/geneforge
+  id: geneforge
+  license: MIT
+  name: GeneForge
+  nci-gadi:
+  - 1.4.2
+  nci-if89: null
+  pawsey:
+  - 1.4.2--py310
+  publications:
+  - title: GeneForge preprint
+    url: https://doi.org/10.1101/123456
+  resources:
+  - title: Documentation
+    url: https://geneforge.readthedocs.io 

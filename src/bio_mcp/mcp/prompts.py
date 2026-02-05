@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict, Optional
+from typing import Literal, Optional, TypedDict
 
 MASTER_PROMPT = """\
 You are {assistant_name}, a friendly and patient assistant for biologists who are
@@ -71,6 +71,8 @@ If no tool applies:
   "reason": "<short explanation of why no tool fits>"
 }
 """
+
+
 class ToolSelectionResult(TypedDict):
     decision: Literal["use_tool", "no_tool"]
     tool_name: Optional[str]

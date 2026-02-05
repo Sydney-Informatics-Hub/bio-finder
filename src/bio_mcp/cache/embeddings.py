@@ -1,15 +1,12 @@
+import re
+from pathlib import Path
 from typing import Dict, Set
 
-from pathlib import Path
-
 import yaml
-import json
-from anthropic import Anthropic
 from dotenv import load_dotenv
-from bio_mcp.globals import ANTHROPIC_MODEL
-import re 
 
 load_dotenv()
+
 
 def alias_metadata(yaml):
     """
@@ -27,6 +24,7 @@ def alias_metadata(yaml):
         }
     collected_data.append(entry)
     return collected_data
+
 
 def make_embedding_text(tool: dict) -> str:
     """
@@ -50,7 +48,10 @@ def make_embedding_text(tool: dict) -> str:
 
     return "\n".join(parts)
 
-def load_edam_obo(path: str = "/home/ubuntu/bio-mcp/data/EDAM.obo") -> Dict[str, Dict[str, str]]:
+
+def load_edam_obo(
+    path: str = "/home/ubuntu/bio-mcp/data/EDAM.obo",
+) -> Dict[str, Dict[str, str]]:
     """
     Read EDAM.obo and return a mapping of EDAM term ID -> minimal term metadata.
     """
@@ -94,8 +95,10 @@ def load_edam_obo(path: str = "/home/ubuntu/bio-mcp/data/EDAM.obo") -> Dict[str,
 
     return terms
 
+
 def normalize(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
 
 def extract_concepts_from_biotools_yaml(yaml_path: Path) -> Dict[str, Set[str]]:
     """

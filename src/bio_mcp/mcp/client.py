@@ -1,17 +1,18 @@
 import asyncio
+import json
+import logging
+import textwrap
+from collections import defaultdict
 from contextlib import AsyncExitStack
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from collections import defaultdict
-import logging
-import textwrap
+
 from bio_mcp.globals import ANTHROPIC_MODEL
 from bio_mcp.mcp.prompts import MASTER_PROMPT, TOOL_SELECT_PROMPT, ToolSelectionResult
-import json
 
 load_dotenv()
 
@@ -21,6 +22,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
+
 def render_search_results(entries: List[Dict]) -> str:
     """
     Render search_containers results into a human-friendly print
@@ -28,7 +30,7 @@ def render_search_results(entries: List[Dict]) -> str:
     """
     if not entries:
         return "No matching conruntainers found."
-    
+
     # Group entries by tool_name
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for entry in entries:
@@ -56,6 +58,7 @@ To use the latest version:
 
     return "\n\n---\n\n".join(blocks)
 
+
 def render_startup_message(tools) -> None:
     print("\nConnected to BioCLI!\n")
     print("Available tools:\n")
@@ -71,6 +74,7 @@ def render_startup_message(tools) -> None:
             )
             print(f"{desc}\n")
 
+
 class MCPClient:
     def __init__(self):
         # Initialize session and client objects
@@ -85,7 +89,7 @@ class MCPClient:
         - Validates server
         - Sets up proper communication channels
         - Initialises the session and lists registered MCP tools
-        
+
         Args:
             server_script_path: Path to the server script (.py)
         """
@@ -111,15 +115,15 @@ class MCPClient:
         tools = response.tools
         render_startup_message(tools)
 
-    async def skill_tool_select(self, user_query: str, tools) -> ToolSelectionResult:
+    def skill_tool_select(self, user_query: str, tools) -> ToolSelectionResult:
         """
-        Decide whether an MCP tool should be used.
-        This skill performs no side effects.
+        Decide whether an MCP tool should be used before it is called. This is to prevent the LLM providing an answer without the tool being used
         """
         tool_summaries = [
             {
                 "name": t.name,
                 "description": t.description,
+                "inputSchema": t.inputSchema,
             }
             for t in tools
         ]
@@ -145,18 +149,19 @@ class MCPClient:
 
         text = response.content[0].text.strip()
 
-        # Strip markdown code fences if present
+        # Remove code backticks from output if present
         if text.startswith("```"):
-            text = text.strip("`")
+            text = text[3:]
             if text.startswith("json"):
-                text = text[4:].strip()
+                text = text[4:]
+            text = text.strip()
+            if text.endswith("```"):
+                text = text[:-3].rstrip()
 
         try:
             result: ToolSelectionResult = json.loads(text)
         except json.JSONDecodeError:
-            raise RuntimeError(
-                f"Tool selection skill returned invalid JSON:\n{text}"
-            )
+            raise RuntimeError(f"Tool selection skill returned invalid JSON:\n{text}")
 
         # No hallucinating if a tool isn't selected
         if result["decision"] == "use_tool":
@@ -167,7 +172,6 @@ class MCPClient:
 
         return result
 
-            
     async def process_query(self, query: str) -> str:
         """
         Process a query using Claude and registered MCP tools.
@@ -175,7 +179,7 @@ class MCPClient:
         - Maintains conversation context
         - Handles Claude’s responses and tool calls
         - Manages the message flow between Claude and tools
-        
+
         Tool handling:
             - Modify to handle specific tool types
             - Custom error handling for tool calls
@@ -186,8 +190,7 @@ class MCPClient:
             - Add response filtering or transformation
             - Implement custom logging
         """
-        # prompt engineer the LLM tone and persona
-        messages = [ {"role": "user", "content": query} ]
+        messages = [{"role": "user", "content": query}]
 
         # Get registerd MCP tools
         tools_response = await self.session.list_tools()
@@ -203,40 +206,49 @@ class MCPClient:
         ]
 
         # Skill: decide on a tool to use, no computation yet
-        decision = await self.skill_tool_select(query, tools)
+        decision = self.skill_tool_select(query, tools)
 
         # If a tool doesn't apply, do not use LLM to provide an answer
         if decision["decision"] == "no_tool":
             return (
                 "I couldn't find a suitable tool for this question.\n\n"
-                f"Reason {decision['reason']}"
+                f"Reason: {decision['reason']}"
             )
-        
+
         # Tool selected
         tool_name = decision["tool_name"]
         reason = decision["reason"]
 
         tool = next(t for t in tools if t.name == tool_name)
+        selected_tools = [
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "input_schema": tool.inputSchema,
+            }
+        ]
 
         intro = (
-            f"I’m going to use the **{tool_name}** tool.\n\n"
-            f"Why this tool: {reason}\n"
+            f"I’m going to use the **{tool_name}** tool.\n\nWhy this tool: {reason}\n"
         )
 
         # Initial Claude API call
         response = self.anthropic.messages.create(
             model=self.anthropic_model,
             max_tokens=1000,
-            system = MASTER_PROMPT, # Set tone and persona of LLM
+            system=MASTER_PROMPT,  # Set tone and persona of LLM
             messages=messages,
-            tools=available_tools,
+            tools=selected_tools,
+            tool_choice={"type": "tool", "name": tool_name} # Enforce use of selected tool on first response, can be relaxed in future iterations
         )
 
-        logging.info(f"Initial Claude API call:\n{response}\n")
+        # logging.info(f"Initial Claude API call:\n{response}\n")
 
         # Process response and handle tool calls
         final_text = []
         assistant_message_content = []
+
+        saw_tool_use = False
 
         # Process response
         for content in response.content:
@@ -245,13 +257,18 @@ class MCPClient:
                 assistant_message_content.append(content)
 
             elif content.type == "tool_use":
+                if content.name != tool_name:
+                    raise RuntimeError(
+                        f"Selected tool was {tool_name}, but model requested {content.name}"
+                    )
+                saw_tool_use = True
                 # Add intro BEFORE tool_use in same assistant turn
                 assistant_message_content.insert(
                     0,
                     {
                         "type": "text",
                         "text": intro,
-                    }
+                    },
                 )
                 tool_name = content.name
                 tool_args = content.input
@@ -287,10 +304,10 @@ class MCPClient:
                     max_tokens=1000,
                     system=MASTER_PROMPT,
                     messages=messages,
-                    tools=available_tools,
+                    tools=selected_tools,
                 )
 
-                logging.info(f"Next response from Claude:\n{response}\n")
+                # logging.info(f"Next response from Claude:\n{response}\n")
 
                 # Collect explanation text
                 for block in response.content:
@@ -298,6 +315,9 @@ class MCPClient:
                         final_text.append(block.text)
 
                 break  # single-tool invariant enforced by skill
+
+        if not saw_tool_use:
+            raise RuntimeError(f"Expected tool use for selected tool: {tool_name}")
 
         return "\n".join(final_text)
 
@@ -310,7 +330,6 @@ class MCPClient:
 
         print("\nMCP Client Started!")
         print("Type your queries or 'quit' to exit.")
-        # TODO: Provide example queries, usage etc.
 
         while True:
             try:
