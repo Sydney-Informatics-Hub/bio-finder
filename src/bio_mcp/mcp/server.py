@@ -35,28 +35,43 @@ def _search_containers(
     Returns:
         List of full registry entries (one per matched container name)
     """
-    results: List[Any] = []
+    results: List[Dict[str, Any]] = []
     available_names = list(registry.keys())
 
     if isinstance(tool_names, str):
         tool_names = [tool_names]
 
     for tool in tool_names:
-        # Exact match first
-        if tool in available_names:
-            match = registry.get(tool)
-            results.append(match)
+        # First try exact match, then fuzzy match if no exact match found
+        containers: List[Any] = []
+        match = registry.get(tool)
+        if match is not None:
+            # Ensures a flat list of containers
+            if isinstance(match, list):
+                containers.extend(match)
+            else:
+                containers.append(match)
+            # Add additional match info
+            results.append({"found": True, "tool_id": tool, "containers": containers})
             continue
 
-        # Fuzzy match if no exact matches are found
         matches = difflib.get_close_matches(
             tool, available_names, n=max_matches, cutoff=cutoff
         )
 
         for name in matches:
-            results.append(registry[name])
+            entry = registry[name]
+            # Ensures a flat list of containers
+            if isinstance(entry, list):
+                containers.extend(entry)
+            else:
+                containers.append(entry)
 
-    # Return empty list if no matches
+        # Add additional match info
+        results.append(
+            {"found": bool(containers), "tool_id": tool, "containers": containers}
+        )
+
     return results
 
 
@@ -86,8 +101,10 @@ def _describe_container(
 
     for tool in tool_names:
         cvmfs_versions = cvmfs_registry.get(tool)
-
         metadata: Optional[Dict[str, Any]] = biotools_registry.get(tool)
+
+        if cvmfs_versions is None and metadata is None:
+            continue  # Skip if no registry entry or metadata found for this tool
 
         results.append(
             {
