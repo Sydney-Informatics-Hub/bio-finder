@@ -1,6 +1,6 @@
 import difflib
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from mcp.server.fastmcp import FastMCP
 
@@ -34,6 +34,7 @@ def _search_containers(
 
     Returns:
         List of full registry entries (one per matched container name)
+
     """
     results: List[Dict[str, Any]] = []
     available_names = list(registry.keys())
@@ -79,7 +80,7 @@ def _describe_container(
     cvmfs_registry: Dict[str, List[Dict[str, Any]]],
     biotools_registry: Dict[str, Dict[str, Any]],
     tool_names: List[str] | str,
-) -> List[Dict[str, Any]]:
+) -> Dict[str, Any] | List[Dict[str, Any]]:
     """
     Describe containers by joining CVMFS inventory with bio.tools metadata
 
@@ -92,30 +93,62 @@ def _describe_container(
            List of container (tool) names to describe
 
     Returns:
-        List of container descriptions with metadata
+        Dict for a single tool name or list of dicts for multiple tool names, each containing:
+        - found: bool indicating if any containers were found
+        - tool_id: input tool name
+        - containers: list of matching CVMFS container entries (empty if none found)
+        - metadata: bio.tools metadata record (empty dict if no match in bio.tools)
+        - versions: list of dicts with version info extracted from CVMFS entries
     """
+    single_input = isinstance(tool_names, str)
+    tools = [tool_names] if single_input else tool_names
+
     results: List[Dict[str, Any]] = []
 
-    if isinstance(tool_names, str):
-        tool_names = [tool_names]
-
-    for tool in tool_names:
-        cvmfs_versions = cvmfs_registry.get(tool)
-        metadata: Optional[Dict[str, Any]] = biotools_registry.get(tool)
-
-        if cvmfs_versions is None and metadata is None:
-            continue  # Skip if no registry entry or metadata found for this tool
-
-        results.append(
-            {
-                "container": tool,
-                "versions": cvmfs_versions,
-                "metadata": metadata,
-            }
+    for tool in tools:
+        # --- containers / versions ---
+        raw_versions = cvmfs_registry.get(tool)
+        containers = (
+            raw_versions
+            if isinstance(raw_versions, list)
+            else [raw_versions] if raw_versions else []
         )
 
-    return results
+        versions = [
+            {
+                "entry_name": c.get("entry_name"),
+                "tag": c.get("tag"),
+                "path": c.get("path"),
+                "size_bytes": c.get("size_bytes"),
+                "mtime": c.get("mtime"),
+            }
+            for c in containers
+            if isinstance(c, dict)
+        ]
 
+        metadata = biotools_registry.get(tool) or {}
+
+        # return True if found in either metadata or cvmfs, False if not found in both
+        tool_known = bool(metadata) or bool(versions)
+
+        if not tool_known:
+            results.append(
+                {
+                    "found": False,
+                    "tool_id": tool,
+                }
+            )
+        else:
+            results.append(
+                {
+                    "found": True,
+                    "tool_id": tool,
+                    "metadata": metadata,
+                    "versions": versions,  # empty list = known, no container
+                }
+            )
+
+    return results[0] if single_input else results
 
 def recommend_containers(keywords: List[str], biotools_registry: dict[Any]):
     return
@@ -135,7 +168,7 @@ def search_containers(tool_names: str) -> List[Any]:
 
 
 @mcp.tool()
-def describe_container(tool_names: str) -> List[Any]:
+def describe_container(tool_names: str) -> Dict[str, Any]:
     """
     Describe available containers by exact name(s) and enrich with bio.tools metadata.
 
