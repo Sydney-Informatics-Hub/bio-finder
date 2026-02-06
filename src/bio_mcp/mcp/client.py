@@ -23,20 +23,9 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
-def render_startup_message(tools) -> None:
+def render_startup_message() -> None:
     print("\nConnected to BioCLI!\n")
     print("Available tools:\n")
-
-    for tool in tools:
-        print(f"  {tool.name}")
-        if tool.description:
-            desc = textwrap.fill(
-                tool.description.strip(),
-                width=76,
-                initial_indent="    ",
-                subsequent_indent="    ",
-            )
-            print(f"{desc}\n")
 
 def route_query(query: str) -> Literal["search", "describe", "recommend", "none"]:
     """Route query to appropriate skill based on simple keyword matching
@@ -60,8 +49,8 @@ def extract_tool_names(query: str) -> List[str]:
     """
     # Simple regex to extract words, filter out common words
     words = re.findall(r"[a-z0-9]+", query.lower())
-    tool_names = [w for w in words if w not in _COMMON_WORDS]
-    return tool_names
+    possible_tools = [w for w in words if w not in _COMMON_WORDS]
+    return possible_tools
 
 class MCPClient:
     def __init__(self):
@@ -91,8 +80,7 @@ class MCPClient:
         )
 
         stdio_transport = await self.exit_stack.enter_async_context(
-            stdio_client(server_params)
-        )
+            stdio_client(server_params))
         self.stdio, self.write = stdio_transport
         self.session = await self.exit_stack.enter_async_context(
             ClientSession(self.stdio, self.write)
@@ -101,7 +89,7 @@ class MCPClient:
         await self.session.initialize()
 
         self.tools = await self.list_tools()
-        render_startup_message(self.tools)
+        render_startup_message()
 
     async def list_tools(self) -> List[Dict[str, Any]]:
         """List registered MCP tools"""
@@ -114,7 +102,6 @@ class MCPClient:
             for tool in response.tools
         ]
 
-        
     async def process_query(self, query: str) -> str:
         """
         Process a query using Claude and registered MCP tools.
@@ -133,136 +120,13 @@ class MCPClient:
             - Add response filtering or transformation
             - Implement custom logging
         """
-        messages = [{"role": "user", "content": query}]
+        # Determine which tool to use based on keywords inquery
+        q = query.lower()
+        decided_tool = route_query(q)
+        possible_tools = extract_tool_names(q)
 
-        # Get registerd MCP tools
-        tools_response = await self.session.list_tools()
-        tools = tools_response.tools
-
-        available_tools = [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": tool.inputSchema,
-            }
-            for tool in tools
-        ]
-
-        # Skill: decide on a tool to use, no computation yet
-        decision = self.skill_tool_select(query, tools)
-
-        # If a tool doesn't apply, do not use LLM to provide an answer
-        if decision["decision"] == "no_tool":
-            return (
-                "I couldn't find a suitable tool for this question.\n\n"
-                f"Reason: {decision['reason']}"
-            )
-
-        # Tool selected
-        tool_name = decision["tool_name"]
-        reason = decision["reason"]
-
-        tool = next(t for t in tools if t.name == tool_name)
-        selected_tools = [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": tool.inputSchema,
-            }
-        ]
-
-        intro = (
-            f"I’m going to use the **{tool_name}** tool.\n\nWhy this tool: {reason}\n"
-        )
-
-        # Initial Claude API call
-        response = self.anthropic.messages.create(
-            model=self.anthropic_model,
-            max_tokens=1000,
-            system=MASTER_PROMPT,  # Set tone and persona of LLM
-            messages=messages,
-            tools=selected_tools,
-            tool_choice={"type": "tool", "name": tool_name} # Enforce use of selected tool on first response, can be relaxed in future iterations
-        )
-
-        # logging.info(f"Initial Claude API call:\n{response}\n")
-
-        # Process response and handle tool calls
-        final_text = []
-        assistant_message_content = []
-
-        saw_tool_use = False
-
-        # Process response
-        for content in response.content:
-            if content.type == "text":
-                final_text.append(content.text)
-                assistant_message_content.append(content)
-
-            elif content.type == "tool_use":
-                if content.name != tool_name:
-                    raise RuntimeError(
-                        f"Selected tool was {tool_name}, but model requested {content.name}"
-                    )
-                saw_tool_use = True
-                # Add intro BEFORE tool_use in same assistant turn
-                assistant_message_content.insert(
-                    0,
-                    {
-                        "type": "text",
-                        "text": intro,
-                    },
-                )
-                tool_name = content.name
-                tool_args = content.input
-
-                assistant_message_content.append(content)
-
-                # Add assistant message (intro selection and use)
-                messages.append(
-                    {"role": "assistant", "content": assistant_message_content}
-                )
-
-                # Execute tool call
-                result = await self.session.call_tool(content.name, content.input)
-                final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
-
-                # Return tool results to Claude
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": content.id,
-                                "content": result.content,
-                            }
-                        ],
-                    }
-                )
-
-                # Get next response from Claude
-                response = self.anthropic.messages.create(
-                    model=self.anthropic_model,
-                    max_tokens=1000,
-                    system=MASTER_PROMPT,
-                    messages=messages,
-                    tools=selected_tools,
-                )
-
-                # logging.info(f"Next response from Claude:\n{response}\n")
-
-                # Collect explanation text
-                for block in response.content:
-                    if block.type == "text":
-                        final_text.append(block.text)
-
-                break  # single-tool invariant enforced by skill
-
-        if not saw_tool_use:
-            raise RuntimeError(f"Expected tool use for selected tool: {tool_name}")
-
-        return "\n".join(final_text)
+        print(f"Decided tool: {decided_tool}, Possible tools: {possible_tools}")
+        
 
     async def chat_loop(self):
         """Run an interactive chat loop
