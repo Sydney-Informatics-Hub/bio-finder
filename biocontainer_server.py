@@ -30,9 +30,9 @@ import mcp.server.stdio
 
 
 # Data paths
-DATA_DIR = Path("/mnt/user-data/uploads")
+DATA_DIR = Path(__file__).resolve().parent
 METADATA_FILE = DATA_DIR / "toolfinder_meta.yaml"
-SINGULARITY_CACHE_FILE = DATA_DIR / "galaxy_singularity_cache_json.gz"
+SINGULARITY_CACHE_FILE = DATA_DIR / "galaxy_singularity_cache.json.gz"
 
 
 class BioContainerIndex:
@@ -48,13 +48,13 @@ class BioContainerIndex:
     def load_data(self):
         """Load metadata and singularity cache."""
         # Load metadata YAML
-        print(f"Loading metadata from {METADATA_FILE}...")
+        #print(f"Loading metadata from {METADATA_FILE}...")
         with open(METADATA_FILE, 'r') as f:
             self.metadata = yaml.safe_load(f)
-        print(f"Loaded {len(self.metadata)} tool metadata entries")
+        #print(f"Loaded {len(self.metadata)} tool metadata entries")
         
         # Load singularity cache
-        print(f"Loading singularity cache from {SINGULARITY_CACHE_FILE}...")
+        #print(f"Loading singularity cache from {SINGULARITY_CACHE_FILE}...")
         with gzip.open(SINGULARITY_CACHE_FILE, 'rt') as f:
             cache_data = json.load(f)
             self.cache_info = {
@@ -63,7 +63,7 @@ class BioContainerIndex:
                 'entry_count': cache_data['entry_count']
             }
             self.singularity_entries = cache_data['entries']
-        print(f"Loaded {len(self.singularity_entries)} singularity entries")
+        #print(f"Loaded {len(self.singularity_entries)} singularity entries")
         
         # Build indexes
         self._build_indexes()
@@ -489,9 +489,9 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 async def main():
     """Run the MCP server."""
     # Load data
-    print("Initializing BioContainer Finder MCP Server...")
+    #print("Initializing BioContainer Finder MCP Server...")
     index.load_data()
-    print("Ready to serve requests!")
+    #print("Ready to serve requests!")
     
     # Run server
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
