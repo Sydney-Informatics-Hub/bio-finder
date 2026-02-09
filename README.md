@@ -115,59 +115,50 @@ biocontainer> quit
 ```bash
 $ ./biocontainer_client.py find fastqc
 
-# FASTQC
 
-**Description:** A quality control tool for high throughput sequence data
+======================================================================
+🧬 FASTQC
+======================================================================
 
-**Homepage:** https://www.bioinformatics.babraham.ac.uk/projects/fastqc/
+📝 Description:
+   This tool aims to provide a QC report which can spot problems or biases which originate either in the sequencer or in the starting library material. It can be run in one of two modes. It can either run as a stand alone interactive application for the immediate analysis of small numbers of FastQ files, or it can be run in a non-interactive mode where it would be suitable for integrating into a larger analysis pipeline for the systematic processing of large numbers of files.
 
-**License:** GPL-3.0
+🌐 Homepage: http://www.bioinformatics.babraham.ac.uk/projects/fastqc/
+⚙️  Operations: Sequence composition calculation, Sequencing quality control, Statistical calculation
 
-**Operations:** Sequencing quality control
+──────────────────────────────────────────────────────────────────────
+📦 AVAILABLE CONTAINERS (27 versions)
+──────────────────────────────────────────────────────────────────────
 
-## Available Containers (45 versions)
+✨ Most Recent Version: 0.12.1--hdfd78af_0
 
-### Most Recent Version: 0.12.1--hdfd78af_2
-**Path:** `/cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_2`
-**Size:** 245.3 MB
+   Path: /cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_0
+   Size: 279.8 MB
 
-### Usage Example:
-```bash
+──────────────────────────────────────────────────────────────────────
+💡 USAGE EXAMPLES
+──────────────────────────────────────────────────────────────────────
+
 # Execute a command in the container
-singularity exec /cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_2 fastqc --help
+singularity exec /cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_0 \
+  fastqc --help
 
 # Run interactively
-singularity shell /cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_2
-```
+singularity shell /cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_0
 
-### All Available Versions:
-- **0.12.1--hdfd78af_2** - `/cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_2`
-- **0.12.1--hdfd78af_1** - `/cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_1`
-- **0.11.9--hdfd78af_1** - `/cvmfs/singularity.galaxyproject.org/all/fastqc:0.11.9--hdfd78af_1`
-...
-```
+──────────────────────────────────────────────────────────────────────
+📚 OTHER VERSIONS
+──────────────────────────────────────────────────────────────────────
 
-### Searching by Function
+   1. 0.12.1--hdfd78af_0
+      /cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78af_0
+   2. 0.11.9--hdfd78af_1
+      /cvmfs/singularity.galaxyproject.org/all/fastqc:0.11.9--hdfd78af_1
+   3. 0.11.9--0
+      /cvmfs/singularity.galaxyproject.org/all/fastqc:0.11.9--0
+   ... and 24 more versions
 
-```bash
-$ ./biocontainer_client.py search "sequence alignment"
-
-# Tools for: sequence alignment
-
-Found 15 matching tools:
-
-## 1. BWA
-**ID:** bwa
-**Description:** Burrows-Wheeler Aligner for mapping sequences against large genomes
-**Operations:** Sequence alignment, Read mapping
-**Latest Container:** `0.7.17--h5bf99c6_8`
-**Quick Start:** `singularity exec /cvmfs/singularity.galaxyproject.org/all/bwa:0.7.17--h5bf99c6_8 bwa --help`
-
-## 2. Bowtie2
-**ID:** bowtie2
-**Description:** Fast and memory-efficient aligner for short DNA sequences
-**Operations:** Sequence alignment
-...
+======================================================================
 ```
 
 ## Architecture
@@ -244,7 +235,7 @@ The MCP protocol allows this server to be used by:
 
 ## Limitations
 
-- Metadata may be incomplete for some tools (depends on source data)
+- Metadata is incomplete for many tools
 - Container availability depends on CVMFS being mounted
 - Search is keyword-based (no semantic search yet)
 - No execution or workflow management (discovery only)
@@ -252,18 +243,20 @@ The MCP protocol allows this server to be used by:
 ## Future Enhancements
 
 Potential improvements:
+- Use LLM for NLP and improved/accurate resposnes
 - Semantic search using embeddings
 - Container testing and validation
-- Integration with workflow languages (Nextflow, Snakemake)
 - Usage statistics and popularity rankings
 - Direct CVMFS path verification
-- Tool dependency graphs
+- API connections to CVMFS resources and 
 
 ## Data Updates
 
+TODO: docs for creating `galaxy_singularity_cache.json.gz`
+
 To update the data sources:
 1. Replace `toolfinder_meta.yaml` with the latest version
-2. Replace `galaxy_singularity_cache_json.gz` with current cache
+2. Replace `galaxy_singularity_cache.json.gz` with current cache
 3. Restart the server
 
 The index is rebuilt on each server start, so changes are immediately available.
@@ -282,10 +275,6 @@ The index is rebuilt on each server start, so changes are immediately available.
 ### Import errors
 - Run `pip install --break-system-packages -r requirements.txt`
 - Ensure Python 3.8+ is installed
-
-## License
-
-This MCP implementation is provided as-is for bioinformatics research use.
 
 ## Contributing
 
