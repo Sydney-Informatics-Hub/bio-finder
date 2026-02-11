@@ -1,9 +1,9 @@
 #!/bin/bash
-# Setup script for BioContainer Finder MCP
+# Setup script for BioFinder Finder MCP
 
 set -e
 
-echo "=== BioContainer Finder MCP Setup ==="
+echo "=== BioFinder Finder MCP Setup ==="
 echo
 
 # Check Python version
@@ -16,14 +16,14 @@ pip install --break-system-packages -r requirements.txt
 
 # Make scripts executable
 echo "Making scripts executable..."
-chmod +x biocontainer_server.py
-chmod +x biocontainer_client.py
+chmod +x biofinder_server.py
+chmod +x biofinder_client.py
 
 echo
 echo "✓ Setup complete!"
 echo
 echo "Usage examples:"
-echo "  ./biocontainer_client.py find fastqc"
-echo "  ./biocontainer_client.py search 'quality control'"
-echo "  ./biocontainer_client.py interactive"
+echo "  ./biofinder_client.py find fastqc"
+echo "  ./biofinder_client.py search 'quality control'"
+echo "  ./biofinder_client.py interactive"
 echo
