@@ -3,6 +3,8 @@
 Find bioinformatics tools available as Singularity containers on Galaxy CVMFS -
 and get ready-to-copy `singularity` commands from your terminal.
 
+![](logo.png)
+
 ⚠️ Warning: This project is under active development. The tool returns results based on **availability**. Independent research is advised to identify the best tool for your data and needs.
 
 ## What does it do?
@@ -21,7 +23,7 @@ latest container path and a copy-pastable `singularity` command.
 ## Example output
 
 ```bash
-$ ./biofinder_client.py find fastqc
+biofinder> find fastqc
 
 ======================================================================
 🧬 FASTQC
@@ -79,15 +81,15 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-### Example usage
+### Example usage 
 
-This demonstrates an example of starting the tool, displaying the supported commands, and a flow of finding available software that can be used for sequence alignment. 
+This mini-tutorial demonstrates an example of starting the tool, displaying the supported commands, and a recommended flow of finding available software that can be used for sequence alignment. 
 
-One located, you can display more information about the available versions on the file system.
+Once a (sequence alignment) tool is chosen, you can display more information about the available versions on the file system.
 
 ```bash
 # Enter interactive mode
-./biofinder_client.py 
+./biofinder
 
 # Display help message
 biofinder> help
@@ -106,9 +108,11 @@ biofinder> versions clustalo
 
 ## Next steps
 
-See the [how-to guide for more examples and tips on using BioFinder effectively](docs/HOW_TO_QUERY.md).
+For an overview of all available options, examples, and tips for using BioFinder effectively, see the guide on [how to query](docs/HOW_TO_QUERY.md).
 
 If you prefer the command-line version (e.g. for scripting and reproducibility), see the [command reference](docs/COMMAND_REFERENCE.md).
+
+BioFinder is in active development with plans to improve functionality, the accuracy of search results, and implementation. See [Future Improvements](docs/DEVELOPER_REFERENCE.md#future-improvements).
 
 ## Links
 

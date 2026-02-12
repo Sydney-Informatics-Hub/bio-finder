@@ -18,11 +18,13 @@ pip install --break-system-packages -r requirements.txt
 echo "Making scripts executable..."
 chmod +x biofinder_server.py
 chmod +x biofinder_client.py
+chmod +x biofinder
 
 echo
 echo "✓ Setup complete!"
 echo
 echo "Usage examples:"
+echo "  biofinder # interactive mode"
 echo "  ./biofinder_client.py find fastqc"
 echo "  ./biofinder_client.py search 'quality control'"
 echo "  ./biofinder_client.py interactive"
