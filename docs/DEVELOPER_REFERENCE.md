@@ -222,6 +222,10 @@ The following are known gaps to address:
   results and reranks them given the original natural-language query would
   dramatically improve usability without requiring embeddings infrastructure.
 
+- **Using the correct LLM.** Consider using a local model for LLM-enriched answers to
+  avoid charges on usage. The local model needs to be suited to the data (e.g.
+  [bioBERT](https://huggingface.co/dmis-lab/biobert-base-cased-v1.2)) etc.
+
 - **Stop-word filtering.** The `search_by_description` scorer inflates scores for
   common words (`data`, `the`, `for`). A simple stop-word list would sharpen results.
 
@@ -236,3 +240,4 @@ The following are known gaps to address:
 - **Support for natural language queries.** Currently the MCP works best for succinct
   and precise queries. e.g. `biofinder> search variant calling` yields more useful
   results in comparison to `biofinder> search "Find where mutations are"`.
+

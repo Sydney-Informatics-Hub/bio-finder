@@ -3,8 +3,6 @@
 Find bioinformatics tools available as Singularity containers on Galaxy CVMFS -
 and get ready-to-copy `singularity` commands from your terminal.
 
-![](logo.png)
-
 ⚠️ Warning: This project is under active development. The tool returns results based on **availability**. Independent research is advised to identify the best tool for your data and needs.
 
 ## What does it do?
@@ -74,7 +72,14 @@ singularity shell /cvmfs/singularity.galaxyproject.org/all/fastqc:0.12.1--hdfd78
 
 ### Setup
 
-To get started, install Python and the required libraries.
+To get started, clone and move into the repository.
+
+```bash
+git clone https://github.com/Sydney-Informatics-Hub/bio-finder.git
+cd bio-finder
+```
+
+Install Python and the required libraries. Dependencies are listed in `requirements.txt`.
 
 ```bash
 chmod +x setup.sh
