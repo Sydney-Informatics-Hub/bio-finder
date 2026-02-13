@@ -107,7 +107,150 @@ biofinder> find clustalo
 
 # Display all available versions
 biofinder> versions clustalo
+
+# Build an Lmod module from CVMFS (requires sudo)
+biofinder> build samtools
+
+# List CVMFS versions without building a module
+biofinder> cvmfs-list samtools
 ```
+
+## Building Lmod Modules from CVMFS
+
+BioFinder can automatically create [Lmod](https://lmod.readthedocs.io/) module files for tools available in CVMFS at `/cvmfs/singularity.galaxyproject.org/all`. This feature requires:
+
+- CVMFS mounted and accessible
+- Lmod installed on the system
+- Write permissions to `/apps/Modules/modulefiles` (run with `sudo`)
+
+### Usage Examples
+
+```bash
+# Build module for latest version of samtools
+./biofinder build samtools
+
+# Build module for specific version
+./biofinder build samtools/1.21
+
+# List available versions without building
+./biofinder cvmfs-list samtools
+```
+
+### Example Output
+
+When building a module without specifying a version:
+
+```
+Available versions:
+ - 1.22--hdfd78af_0
+ - 1.21--h50ea8bc_0
+ - 1.20--h50ea8bc_0
+
+You did not specify a version.
+Defaulting to newest version: 1.22--hdfd78af_0
+
+If you want a specific version:
+    bio-finder build samtools/1.21
+
+Module successfully created.
+
+To load:
+    module load samtools/1.22--hdfd78af_0
+```
+
+The generated module file will be saved to `/apps/Modules/modulefiles/<tool>/<version>.lua` and can be loaded using the standard `module load` command.
+
+### Loading Multiple Modules
+
+You can load multiple bioinformatics tools simultaneously. Each module works independently:
+
+```bash
+# Load multiple tools at once
+module load samtools/1.23--h96c455f_0 bwa/0.7.19--h577a1d6_0 bedtools/2.31.1--hf5e1c6e_0
+
+# Check what's loaded
+module list
+
+# All tools are available simultaneously  
+samtools
+bwa
+bedtools --version
+
+# Unload specific tools
+module unload samtools
+
+# Clear all modules
+module purge
+```
+
+This allows you to set up complete analysis environments with all the tools you need for a workflow.
+
+### Requirements
+
+For the CVMFS module builder functionality:
+
+- **CVMFS**: Must be mounted at `/cvmfs/singularity.galaxyproject.org/all`
+- **Lmod**: Must be installed and available (`module` command)
+- **Permissions**: Write access to `/apps/Modules/modulefiles` (run with `sudo` for module creation)
+- **Singularity**: Must be available on the system (loaded automatically by module)
+
+### Usage Summary
+
+```bash
+# Traditional bio-finder commands (query container metadata)
+./biofinder find samtools
+./biofinder search "sequence alignment" 
+./biofinder versions samtools
+
+# New CVMFS module builder commands
+./biofinder cvmfs-list samtools                # List versions in CVMFS
+./biofinder build samtools                     # Build module with latest version
+./biofinder build samtools/1.22--h96c455f_0   # Build specific version
+
+# For automated scripts/VM builds (preserves Python environment)
+sudo -E env "PATH=$PATH" ./biofinder build samtools
+sudo -E env "PATH=$PATH" ./biofinder build samtools/1.22--h96c455f_0
+
+# Interactive mode (includes all commands except build)
+./biofinder
+
+# After building modules, load and use them
+module load samtools/1.22--h96c455f_0        # Load single module  
+module load samtools bwa bedtools            # Load multiple modules
+module list                                  # Check loaded modules
+samtools                                     # Use the tools
+```
+
+### Automated/Script Usage
+
+For VM build scripts and automation, you have two options:
+
+**Option 1: Direct commands**
+```bash
+# Individual commands (preserves Python environment)
+sudo -E env "PATH=$PATH" ./biofinder build samtools
+sudo -E env "PATH=$PATH" ./biofinder build fastqc  
+sudo -E env "PATH=$PATH" ./biofinder build bowtie2
+```
+
+**Option 2: Automation script (recommended)**
+```bash
+# Build multiple tools with one command
+./build-modules.sh samtools fastqc bowtie2
+
+# Build specific versions
+./build-modules.sh samtools/1.22--h96c455f_0 fastqc/0.12.1--hdfd78af_0
+
+# Use in VM build scripts
+#!/bin/bash
+cd /path/to/bio-finder
+./build-modules.sh samtools fastqc bowtie2 bwa minimap2
+
+# Then load them all for a complete analysis environment
+module load samtools fastqc bowtie2 bwa minimap2
+```
+
+The automation script (`build-modules.sh`) handles sudo permissions and environment preservation automatically.
 
 ⚠️ Warning: The tool returns results based on **availability**. Independent research is advised to identify the best tool for your data and needs.
 
