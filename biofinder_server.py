@@ -166,46 +166,81 @@ class BioFinderIndex:
             'containers': containers_sorted,
             'container_count': len(containers_sorted)
         }
-    
-    def search_by_description(self, query: str, limit: int = 3) -> List[str]:
-        """
-        Search tools by description or functionality.
-        Useful for queries like "What can I use to generate count data?"
-        """
-        query_terms = {
-            token
-            for token in re.findall(r"[a-z0-9]+", query.lower())
-            if token not in STOP_WORDS
-        }
-        if not query_terms:
-            return []
-        
-        results: List[str] = []
-        metadata = self.metadata
 
-        for entry in metadata:
-            entry_id = str(entry.get("id", "") or "")
-            entry_name = str(entry.get("name", "") or "")
-            entry_description = str(entry.get("description", "") or "")
+    def _normalise(self, text: str) -> List[str]:
+        text = text.lower()
+        text = re.sub(r"[^\w\s\-]", " ", text)
+        return text.split()
+
+    def _flatten_edam(self, value):
+        """Flatten EDAM fields safely."""
+        results = []
+        if not value:
+            return results
+
+        if isinstance(value, list):
+            for v in value:
+                if isinstance(v, dict):
+                    if "term" in v and v["term"]:
+                        results.append(str(v["term"]))
+                    if "formats" in v and v["formats"]:
+                        if isinstance(v["formats"], list):
+                            results.extend(map(str, v["formats"]))
+                        else:
+                            results.append(str(v["formats"]))
+                else:
+                    results.append(str(v))
+        else:
+            results.append(str(value))
+
+        return results
+
+    def _search_metadata(self, query: str) -> List[str]:
+        """
+        Search metadata and return matching tool names.
+        OR-based matching with token-level accuracy.
+        """
+
+        query_tokens = set(self._normalise(query))
+        results = []
+
+        for entry in self.metadata:
+            entry_id = str(entry.get("id") or "")
+            entry_name = str(entry.get("name") or "")
+            entry_description = str(entry.get("description") or "")
 
             text_parts = [entry_id, entry_name, entry_description]
-            for field in ("edam-operations", "edam-topics", "edam-inputs", "edam-outputs"):
-                value = entry.get(field)
-                if isinstance(value, list):
-                    text_parts.extend(str(v) for v in value if v)
-                elif value:
-                    text_parts.append(str(value))
 
-            searchable_text = " ".join(text_parts).lower()
-            if not searchable_text:
+            for field in (
+                "edam-operations",
+                "edam-topics",
+                "edam-inputs",
+                "edam-outputs",
+            ):
+                text_parts.extend(self._flatten_edam(entry.get(field)))
+
+            searchable_tokens = set(self._normalise(" ".join(text_parts)))
+
+            if not searchable_tokens:
                 continue
 
-            if any(term in searchable_text for term in query_terms):
+            # Token intersection instead of substring matching
+            overlap = query_tokens.intersection(searchable_tokens)
+
+            if overlap:
                 tool_name = entry_name or entry_id
                 if tool_name:
                     results.append(tool_name)
 
-        return results
+        return sorted(set(results))
+ 
+    def search_by_description(self, query: str) -> List[str]:
+        """
+        Search tools by description or functionality.
+        Useful for queries like "What can I use to generate count data?"
+        """
+        log.info(query)
+        return self._search_metadata(query)
     
     def list_all_tools(self, limit: int = 10) -> List[str]:
         """List all available tool names."""
@@ -427,7 +462,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         description = arguments["description"]
         limit = arguments.get("limit", 10)
         
-        results = index.search_by_description(description, limit)
+        results = index.search_by_description(description)
         
         if not results:
             return [TextContent(

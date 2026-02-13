@@ -73,7 +73,7 @@ async def interactive_mode(session: ClientSession):
     
     while True:
         try:
-            user_input = input("biofinder> ").strip()
+            user_input = input("🐢> ").strip()
             
             if not user_input:
                 continue
