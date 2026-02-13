@@ -13,6 +13,8 @@ from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from cvmfs_module_builder import CVMFSModuleBuilder, format_versions_list, format_build_output
+
 
 async def query_tool(session: ClientSession, tool_name: str):
     """Query for a specific tool."""
@@ -59,6 +61,96 @@ async def get_versions(session: ClientSession, tool_name: str):
             print(content.text)
 
 
+def build_module(tool_spec: str) -> bool:
+    """Build an Lmod module for a tool from CVMFS.
+    
+    Returns:
+        bool: True if build was successful, False otherwise
+    """
+    import subprocess
+    import os
+    
+    # Check if we need sudo (by testing write access to module directory)
+    module_dir = Path("/apps/Modules/modulefiles")
+    needs_sudo = not os.access(module_dir, os.W_OK) if module_dir.exists() else True
+    
+    if needs_sudo:
+        # We need sudo - run the command with sudo automatically  
+        script_dir = Path(__file__).parent
+        biofinder_path = script_dir / "biofinder"
+        
+        cmd = [
+            "sudo", "-E", "env", f"PATH={os.environ['PATH']}", 
+            str(biofinder_path), "build", tool_spec
+        ]
+        
+        try:
+            print(f"🔑 Running with sudo: build {tool_spec}")
+            result = subprocess.run(cmd, check=False)
+            if result.returncode != 0:
+                print(f"❌ Build failed with exit code {result.returncode}")
+                return False
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Build command failed: {e}")
+            return False
+        except KeyboardInterrupt:
+            print("\n❌ Build cancelled by user")
+            return False
+    
+    # Original build logic for when we already have permissions
+    builder = CVMFSModuleBuilder()
+    
+    try:
+        # Get available versions first for display
+        if "/" in tool_spec:
+            tool_name = tool_spec.split("/")[0]
+            requested_version = tool_spec.split("/")[1]
+        else:
+            tool_name = tool_spec
+            requested_version = None
+        
+        available_versions = builder.list_versions(tool_name)
+        
+        if not available_versions:
+            print(f"Error: Tool '{tool_name}' not found in CVMFS")
+            return False
+        
+        # Build the module
+        final_tool, final_version, module_file = builder.build_module(tool_spec)
+        
+        # Refresh module cache
+        success, output = builder._refresh_module_cache()
+        
+        # Display results
+        output_text = format_build_output(
+            final_tool, final_version, module_file, 
+            available_versions, requested_version
+        )
+        print(output_text)
+        return True
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+
+def list_cvmfs_versions(tool_name: str) -> None:
+    """List available versions of a tool in CVMFS."""
+    builder = CVMFSModuleBuilder()
+    
+    try:
+        versions = builder.list_versions(tool_name)
+        
+        if versions:
+            print(format_versions_list(versions))
+        else:
+            print(f"No versions found for '{tool_name}' in CVMFS")
+            
+    except Exception as e:
+        print(f"Error: {e}")
+
+
 async def interactive_mode(session: ClientSession):
     """Interactive query mode."""
     print("\n=== BioFinder - Interactive Mode ===")
@@ -67,13 +159,15 @@ async def interactive_mode(session: ClientSession):
     print("  search <description>      - Search by function/description")
     print("  versions <tool_name>      - List all versions of a tool")
     print("  list [limit]              - List available tools")
+    print("  build <tool[/version]>    - Build Lmod module from CVMFS")
+    print("  cvmfs-list <tool_name>    - List CVMFS versions of a tool")
     print("  help                      - Show this help")
     print("  quit/exit                 - Exit interactive mode")
     print()
     
     while True:
         try:
-            user_input = input("🐢> ").strip()
+            user_input = input("🐢... ").strip()
             
             if not user_input:
                 continue
@@ -87,6 +181,8 @@ async def interactive_mode(session: ClientSession):
                 print("  search <description>      - Search by function/description")
                 print("  versions <tool_name>      - List all versions of a tool")
                 print("  list [limit]              - List available tools")
+                print("  build <tool[/version]>    - Build Lmod module from CVMFS")
+                print("  cvmfs-list <tool_name>    - List CVMFS versions of a tool")
                 print("  help                      - Show this help")
                 print("  quit/exit                 - Exit interactive mode")
                 continue
@@ -105,6 +201,17 @@ async def interactive_mode(session: ClientSession):
                 if len(parts) > 1 and parts[1].isdigit():
                     limit = int(parts[1])
                 await list_tools(session, limit)
+            elif command == "build" and len(parts) > 1:
+                if build_module(parts[1]):
+                    print("\n✅ Module built successfully! Exiting interactive mode.")
+                    print("You can now run: module load <tool>/<version>")
+                    break
+            elif command == "build":
+                print("❌ Missing tool name")
+                print("Usage: build <tool_name>")
+                print("Example: build fastqc")
+            elif command == "cvmfs-list" and len(parts) > 1:
+                list_cvmfs_versions(parts[1])
             else:
                 print(f"Unknown command or missing arguments. Type 'help' for usage.")
         
@@ -124,6 +231,8 @@ async def main():
         print("  biofinder_client.py search <description>")
         print("  biofinder_client.py versions <tool_name>")
         print("  biofinder_client.py list [limit]")
+        print("  biofinder_client.py build <tool[/version]>")
+        print("  biofinder_client.py cvmfs-list <tool_name>")
         print("  biofinder_client.py interactive")
         print("\nExamples:")
         print("  biofinder_client.py find fastqc")
@@ -131,9 +240,25 @@ async def main():
         print("  biofinder_client.py search 'count data from scrna'")
         print("  biofinder_client.py versions samtools")
         print("  biofinder_client.py list 100")
+        print("  biofinder_client.py build samtools")
+        print("  biofinder_client.py build samtools/1.21")
+        print("  biofinder_client.py cvmfs-list samtools")
         print("  biofinder_client.py interactive")
         sys.exit(1)
     
+    # Process command
+    command = sys.argv[1].lower()
+    
+    # Handle CVMFS commands that don't need the MCP server
+    if command == "build" and len(sys.argv) > 2:
+        build_module(sys.argv[2])
+        return
+    
+    elif command == "cvmfs-list" and len(sys.argv) > 2:
+        list_cvmfs_versions(sys.argv[2])
+        return
+    
+    # Handle commands that need the MCP server
     # Locate server script
     server_script = Path(__file__).parent / "biofinder_server.py"
     
@@ -153,9 +278,6 @@ async def main():
         async with ClientSession(read, write) as session:
             # Initialize
             await session.initialize()
-            
-            # Process command
-            command = sys.argv[1].lower()
             
             if command == "find" and len(sys.argv) > 2:
                 await query_tool(session, sys.argv[2])
